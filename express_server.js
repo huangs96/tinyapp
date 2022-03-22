@@ -6,7 +6,8 @@ app.set("view engine", "ejs");
 
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  "9sm5xK": "http://www.google.com",
+  "b3xVn3": "http://www.facebook.com"
 };
 
 app.get("/", (req, res) => {
@@ -15,6 +16,11 @@ app.get("/", (req, res) => {
 
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
+});
+
+app.get("/urls", (req, res) => {
+  const urlData = { urls: urlDatabase };
+  res.render("urls_index", urlData);
 });
 
 app.get("/hello", (req, res) => {
