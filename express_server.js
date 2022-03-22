@@ -4,12 +4,14 @@ const PORT = 8080; // default port 8080
 
 app.set("view engine", "ejs");
 
-function generateRandomString(length) {
-  let shortUrl = '';
-  let chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  for (let i = 0; i < length; i++) {
-    shortUrl += chars.charAt(Math.floor(Math.random()*chars.length))
-  } return generateRandomString
+function generateRandomString() {
+  let characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let randURL = ""
+  let charactersLength = characters.length;
+
+  for (let i = 0; i < 6 ; i++ ) {
+    randURL += characters.charAt(Math.floor(Math.random() * charactersLength));
+  } return randURL
 }
 
 const urlDatabase = {
@@ -31,7 +33,9 @@ app.use(bodyParser.urlencoded({extended: true}));
 
 app.post("/urls", (req, res) => {
   console.log(req.body);  // Log the POST request body to the console
-  res.send("Ok");         // Respond with 'Ok' (we will replace this)
+  let randomURL = generateRandomString();
+  urlDatabase[randomURL] = req.body.longURL;
+  res.redirect(`/urls/${randomURL}`);         // Respond with 'Ok' (we will replace this)
 });
 
 app.get("/urls.json", (req, res) => {
@@ -47,6 +51,12 @@ app.get("/urls/:shortURL", (req, res) => {
   const longURL = urlDatabase[req.params.shortURL] //req.params.shortURL grabs the key of whatever I input into the /urls/:shortURL
   const urlData2 = { shortURL: req.params.shortURL, longURL: longURL } //shortURL equals to req.params.shortURL (the shortURL here is replaced by whatever is put into the shortURL in line)
   res.render("urls_show", urlData2);
+});
+
+app.get("/u/:shortURL", (req, res) => {
+  const shortURL = req.params.shortURL;
+  const longURL = urlDatabase[shortURL]
+  res.redirect(longURL);
 });
 
 app.get("/hello", (req, res) => {
