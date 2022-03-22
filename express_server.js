@@ -23,6 +23,12 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", urlData);
 });
 
+app.get("/urls/:shortURL", (req, res) => {
+  const longURL = urlDatabase[req.params.shortURL] //req.params.shortURL grabs the key of whatever I input into the /urls/:shortURL
+  const urlData2 = { shortURL: req.params.shortURL, longURL: longURL } //shortURL equals to req.params.shortURL (the shortURL here is replaced by whatever is put into the shortURL in line)
+  res.render("urls_show", urlData2);
+});
+
 app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
