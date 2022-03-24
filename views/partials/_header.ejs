@@ -10,16 +10,21 @@
         <a class="nav-item nav-link" href="/urls/new">Create New URL</a>
       </div>
       <div>
-        <% if(!username) { %>
-          <form method="POST" action="/login">
-              <input type="text" name="username" placeholder="username"/>
-              <button type="submit" class="btn btn-primary"> Log In </button>
+        <div class="collapse navbar-collapse justify-content-between" id="navbarNavAltMarkup">
+        <% if(!user_id) { %>
+          <form action="/login">
+            <a class="nav-item nav-link" href="/login">Login</a>
           </form>
+          <form action="/register">
+              <a class="nav-item nav-link" href="/register">Register</a>
+            </form>
+        </form>
+      </div>
           <% } %>
-        <% if(username) { %>
+        <% if(user_id) { %>
           <form class="form-inline" method="POST" action="/logout">
             <div class="form-group">
-              <p class="mb-0 mr-2">Logged in as: <%=username%></p>
+              <p class="mb-0 mr-2">Logged in as: <%= user_id %></p>
               <button type="submit" class="btn btn-primary"> Log Out </button>
             </div>
           </form>
