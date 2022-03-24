@@ -96,11 +96,6 @@ app.post("/register", (req,res) => {
   res.redirect('/urls')
 });
 
-app.get("/login", (req, res) => {
-  const urlData = { urls: urlDatabase, user_id: req.cookies["user_id"], users: users};
-  res.render("urls_login", urlData);
-})
-
 app.post("/login", (req, res) => {
 
   const newEmailAddress = req.body.email;
@@ -125,6 +120,13 @@ app.post("/login", (req, res) => {
 app.post("/logout", (req, res) => {
   res.clearCookie("user_id");
   res.redirect("/urls");
+});
+
+app.post("/urls/new", (req, res) => {
+  if (!user_id) {
+    res.send("Error, please login and try again.");
+    res.redirect('/login');
+  }
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
@@ -155,3 +157,8 @@ app.post("/urls", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
+
+//1. need to display email when logged in
+//2. does not show that I am logged in when login successful
+//3. Redirect does not work for app.post(/urls/new)
+//4. 
