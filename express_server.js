@@ -19,9 +19,9 @@ function generateRandomString() {
 };
 
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com",
-  "b3xVn3": "http://www.facebook.com"
+  "b2xVn2": { longURL: "http://www.lighthouselabs.ca", userID: "" },
+  "9sm5xK": { longURL: "http://www.google.com", userID: "" },
+  "b3xVn3": { longURL: "http://www.facebook.com", userID: "" }
 };
 
 const users = { 
@@ -34,6 +34,12 @@ const users = {
     id: "user2RandomID", 
     email: "user2@example.com", 
     password: "dishwasher-funk"
+  },
+  
+  "test@gmail.com": {
+    id: "test@gmail.com", 
+    email: "test@gmail.com", 
+    password: "test"
   }
 }
 
@@ -44,7 +50,11 @@ app.get("/", (req, res) => {
 });
 
 app.get("/urls/new", (req, res) => {
-  const urlData = { user_id: req.cookies["user_id"]};
+  const user = users[req.cookies["user_id"]];
+  const urlData = { user: user, user_id: req.cookies["user_id"]};
+  if (!user) {
+    res.redirect('/login/Error, please login and try again.');
+  }
   res.render("urls_new", urlData);
 });
 
@@ -53,25 +63,59 @@ app.get("/register", (req, res) => {
   res.render('register', urlData);
 });
 
-app.get("/login", (req, res) => {
-  const urlData = { urls: urlDatabase, user_id: req.cookies["user_id"] };
+app.get("/login/:error", (req, res) => {
+  const user = users[req.cookies["user_id"]];
+  let loginerror = '';
+  
+  if (req.params.error) {
+     loginerror = req.params.error
+  } else {
+     loginerror = '';
+  }
+  const urlData = { user: user, urls: urlDatabase, user_id: req.cookies["user_id"], loginerror: loginerror };
+  
+
+  
+  res.render("login", urlData);
+});
+
+app.get("/login/", (req, res) => {
+  const user = users[req.cookies["user_id"]];
+  const loginerror = '';
+  
+  const urlData = { user: user, urls: urlDatabase, user_id: req.cookies["user_id"], loginerror:'' };
+  
   res.render("login", urlData);
 });
 
 app.get("/urls", (req, res) => {
-  const urlData = { urls: urlDatabase, user_id: req.cookies["user_id"] };
+  const user = users[req.cookies["user_id"]] //needs to be in all header accessed pages
+  const urlData = { user: user, urls: urlDatabase, user_id: req.cookies["user_id"] };
   res.render("urls_index", urlData);
 });
 
 app.get("/urls/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL] //req.params.shortURL grabs the key of whatever I input into the /urls/:shortURL
-  const urlData2 = { shortURL: req.params.shortURL, longURL: longURL, user_id: req.cookies["user_id"] } //shortURL equals to req.params.shortURL (the shortURL here is replaced by whatever is put into the shortURL in line)
+  const user = users[req.cookies["user_id"]]
+  const shortURL = req.params.shortURL;
+  
+  if (urlDatabase[shortURL] === undefined) {
+    res.send('Cannot find ID. Please Try Again.');
+  }
+
+  if (urlDatabase[shortURL] === users["user_id"]) {
+    res.send('Cannot find ID. Please Login');
+  }
+
+  const longURL = urlDatabase[shortURL].longURL;
+  ; //req.params.shortURL grabs the key of whatever I input into the /urls/:shortURL
+
+  const urlData2 = { user: user, shortURL: req.params.shortURL, longURL: longURL, user_id: req.cookies["user_id"] } //shortURL equals to req.params.shortURL (the shortURL here is replaced by whatever is put into the shortURL in line)
   res.render("urls_show", urlData2);
 });
 
 app.get("/u/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
-  const longURL = urlDatabase[shortURL]
+  const longURL = urlDatabase[shortURL].longURL;
   res.redirect(longURL);
 });
 
@@ -100,21 +144,21 @@ app.post("/login", (req, res) => {
 
   const newEmailAddress = req.body.email;
   const newPassword = req.body.password;
+  const user = users[newEmailAddress];
 
-  if (!users[newEmailAddress]) {
+  if (!user) {
     res.send("Error Code 403. Try Again.");
     return;
   } //if email address has already been taken, redirect to homepage
   
-  if (newPassword === users[newEmailAddress].password) {
+  if (newPassword === user.password) {
+    res.cookie("user_id", user.id);
     res.redirect('urls');
     return;
   }
   
   res.send("Error Code 403. Try Again.");//if password matches the password in our database, redirect to urls
-
-  res.cookie("user_id", newEmailAddress);
-  res.redirect("/urls")
+  res.redirect("/urls");
 });
 
 app.post("/logout", (req, res) => {
@@ -123,7 +167,9 @@ app.post("/logout", (req, res) => {
 });
 
 app.post("/urls/new", (req, res) => {
-  if (!user_id) {
+  const user = users[req.cookies["user_id"]];
+  console.log(user);
+  if (!user) {
     res.send("Error, please login and try again.");
     res.redirect('/login');
   }
@@ -138,19 +184,20 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 app.post("/urls/:id", (req, res) => {
   const id = req.params.id;
   urlDatabase[id] = req.body.id;
-  res.render("/urls/");
+  res.redirect("/urls/");
 });
 
 app.post("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
-  const userData = {shortURL: shortURL, longURL: urlDatabase[shortURL], user_id: req.cookies["user_id"]};
+  const userData = {shortURL: shortURL, longURL: urlDatabase[shortURL].longURL, user_id: req.cookies["user_id"]};
   res.redirect(`/urls/${shortURL}`);
 });
 
 app.post("/urls", (req, res) => {
-  console.log(req.body);  // Log the POST request body to the console
   let randomURL = generateRandomString();
-  urlDatabase[randomURL] = req.body.longURL;
+  const longURL = req.body.longURL;
+  // let longURL = urlDatabase.randomURL.longURL;
+  urlDatabase[randomURL] = { longURL:longURL, userid: "" };
   res.redirect(`/urls/${randomURL}`);         // Respond with 'Ok' (we will replace this)
 });
 
@@ -158,7 +205,4 @@ app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
 
-//1. need to display email when logged in
-//2. does not show that I am logged in when login successful
 //3. Redirect does not work for app.post(/urls/new)
-//4. 
