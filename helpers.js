@@ -12,16 +12,15 @@ function generateRandomString() {
   } return randURL
 };
 
-function urlsForUser (id, urlDatabase) { //urlsForUser matches the unique urls of each user (cookie) so that they are printed in URL path.
+function urlsForUser (id, urlDatabase) { 
   let uniqueDatabase = {};
 
   for (let uID in urlDatabase) {
-    // console.log("looping:", uID);
-    // console.log("urlDatabase:", urlDatabase[uID].userID);
+    
     console.log("urlDatabase:", urlDatabase);
     
     if (urlDatabase[uID].userID === id) {
-      uniqueDatabase[uID] = urlDatabase[uID]; //pushes shortURL and LongURL into the new database
+      uniqueDatabase[uID] = urlDatabase[uID]; 
     }
   }
   return uniqueDatabase;
@@ -45,7 +44,7 @@ function passwordMatch (pass, user) {
       return true;
     }
   } return false;
-}; //Everything should be functionable before then -- passwordMatch currently only compares hashed password with input password, which would never match. Can use registered account (new) to test.
+}; 
 
 module.exports = { 
   passwordMatch, 
