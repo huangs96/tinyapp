@@ -1,26 +1,28 @@
 const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
-const cookieParser = require('cookie-parser')
-const bodyParser = require("body-parser");
+
+const bodyParser = require('body-parser');
+const bcrypt = require('bcryptjs');
+const salt = bcrypt.genSaltSync(10);
+const cookieSession = require('cookie-session');
+const helpers = require('./helpers');
+
 
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({extended: true}));
-app.use(cookieParser());
+app.set('trust proxy', 1);
+app.use(cookieSession({
+  name: 'session',
+  keys: ["chicken", "remote", "candle"],
 
-function generateRandomString() {
-  let chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let randURL = "";
-  let charsLength = chars.length;
-
-  for (let i = 0; i < 6 ; i++ ) {
-    randURL += chars.charAt(Math.floor(Math.random() * charsLength));
-  } return randURL
-};
+  // Cookie Options
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+}));
 
 const urlDatabase = {
-  "u31v0q": { longURL: "http://twitter.com", userID: "test@gmail.com"},
-  "io2p1p": { longURL: "http://apple.ca", userID: "test@gmail.com"}
+  "u31v0q": { longURL: "http://twitter.com", userID: "test123"},
+  "io2p1p": { longURL: "http://apple.ca", userID: "test567"}
 };
 
 const users = { 
@@ -35,8 +37,8 @@ const users = {
     password: "dishwasher-funk"
   },
   
-  "test@gmail.com": {
-    id: "test@gmail.com", 
+  "test": {
+    id: "test", 
     email: "test@gmail.com", 
     password: "test"
   }
@@ -45,89 +47,71 @@ const users = {
 //GET
 
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  res.redirect('/urls');
 });
 
 app.get("/urls/new", (req, res) => {
-  const user = users[req.cookies["user_id"]];
-  const urlData = { user: user, user_id: req.cookies["user_id"]};
-  if (!user) {
-    res.redirect('/login/Error, please login and try again.');
+  const usercookieID = users[req.session.user_id];
+  const urlData = { userid: users[usercookieID], user_id: usercookieID};
+
+  if (!req.session["user_id"]) {
+    return res.redirect('/login');
   }
   res.render("urls_new", urlData);
 });
 
 app.get("/register", (req, res) => {
-  const urlData = { urls: urlDatabase, user_id: req.cookies["user_id"] };;
+  const urlData = { urls: urlDatabase, users: users, user_id: "" };
+
   res.render('register', urlData);
 });
 
-app.get("/login/:error", (req, res) => {
-  const user = users[req.cookies["user_id"]];
-  let loginerror = '';
-  
-  if (req.params.error) {
-     loginerror = req.params.error
-  } else {
-     loginerror = '';
-  }
-  const urlData = { user: user, urls: urlDatabase, user_id: req.cookies["user_id"], loginerror: loginerror };
-  
-
-  
-  res.render("login", urlData);
-});
-
 app.get("/login/", (req, res) => {
-  const user = users[req.cookies["user_id"]];
-  const loginerror = '';
-  
-  const urlData = { user: user, urls: urlDatabase, user_id: req.cookies["user_id"], loginerror:'' };
+
+  // if (user) {
+  //   res.redirect("/urls");
+  // }
+  const urlData = { users: users, urls: urlDatabase, user_id: "" };
   
   res.render("login", urlData);
 });
 
 app.get("/urls", (req, res) => {
-  const user = users[req.cookies["user_id"]] //needs to be in all header accessed pages
   
-  if (!user) {
-    res.send('Please login.')
-  }
+  const urlData = { urls: "", user_id: "", users: users }; //shorthand: (userURL: userURL === userURL), we are able to just have one userURL in the object
   
-  let uniqueDatabase = {};
-  for (let uID in urlDatabase) {
-    if (urlDatabase[uID].userID === user.id) {
-      console.log(urlDatabase[uID]); //finds the matching userID's
-      uniqueDatabase[uID] = urlDatabase[uID]; //pushes shortURL and LongURL into the new database
-    }
-  }
+  if (req.session.user_id) {
+    const user = req.session.user_id;
+    urlData.user_id = users[user];
 
-  const urlData = { user: user, urls: uniqueDatabase, user_id: req.cookies["user_id"] };
-  res.render("urls_index", urlData);
+    const urlsForUser1 = helpers.urlsForUser(users[req.session.user_id].id, urlDatabase);
+    urlData.urls = urlsForUser1;
+
+    res.render("urls_index", urlData);
+  } else {
+    res.redirect('/login')
+  }
 });
 
 app.get("/urls/:shortURL", (req, res) => {
-  const user = users[req.cookies["user_id"]]
+  const usercookieID = users[req.session.user_id];
   const shortURL = req.params.shortURL;
-  
-  if (urlDatabase[shortURL] === undefined) {
-    res.send('Cannot find ID. Please Try Again.');
-  }
-
-  if (urlDatabase[shortURL] === users["user_id"]) {
-    res.send('Cannot find ID. Please Login');
-  }
-
   const longURL = urlDatabase[shortURL].longURL;
   ; //req.params.shortURL grabs the key of whatever I input into the /urls/:shortURL
+  const urlData = { shortURL: req.params.shortURL, longURL: longURL, user_id: usercookieID, userid: users[usercookieID] } //shortURL equals to req.params.shortURL (the shortURL here is replaced by whatever is put into the shortURL in line)
 
-  const urlData2 = { user: user, shortURL: req.params.shortURL, longURL: longURL, user_id: req.cookies["user_id"] } //shortURL equals to req.params.shortURL (the shortURL here is replaced by whatever is put into the shortURL in line)
-  res.render("urls_show", urlData2);
+
+  res.render("urls_show", urlData);
 });
 
 app.get("/u/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
   const longURL = urlDatabase[shortURL].longURL;
+
+  if (!urlDatabase[shortURL]) {
+    return res.send('Short URL does not exist. Please Try Again.');
+  }
+
   res.redirect(longURL);
 });
 
@@ -135,98 +119,102 @@ app.get("/u/:shortURL", (req, res) => {
 
 app.post("/register", (req,res) => {
   const newEmail = req.body.email;
-  const newPassword = req.body.password;
-  const id = generateRandomString();
+  const newPassword = bcrypt.hashSync(req.body.password, 10);
+  const id = helpers.generateRandomString();
+  // console.log('hashed password:', newPassword);
+
   if (newEmail === "" || newPassword === "") {
-    res.send("Error Code 400. Try Again.");
+    res.send("Error Code 400. Missing one or more fields. Try Again.");
     return;
   }
 
-  if (users[newEmail]) {
-    res.send("Error Code 400. Try Again.")
+  if (helpers.uniqueEmail(newEmail)) {
+    res.send("Error Code 400. Email is already in use. Try Again.")
     return;
   }
 
-  users[newEmail] = { id: id, email: newEmail, password: newPassword };
-  res.cookie("user_id", id);
+  users[id] = { id: id, email: newEmail, password: newPassword };
+  req.session.user_id = id;
+  // console.log("usercheck:", users);
   res.redirect('/urls')
 });
 
 app.post("/login", (req, res) => {
-
+  
   const newEmailAddress = req.body.email;
   const newPassword = req.body.password;
-  const user = users[newEmailAddress];
+  // console.log("credentials:", newEmailAddress, newPassword);
 
-  if (!user) {
-    res.send("Error Code 403. Try Again.");
-    return;
-  } //if email address has already been taken, redirect to homepage
-  
-  if (newPassword === user.password) {
-    res.cookie("user_id", user.id);
-    res.redirect('urls');
-    return;
+  const userObject = helpers.uniqueEmail(newEmailAddress, users)
+  // console.log("userobject:", userObject);
+
+  if (userObject) {
+    if (helpers.passwordMatch(newPassword, userObject)) {
+      req.session.user_id = userObject.id;
+      console.log(userObject.id);
+      res.redirect("/urls");
+      return;
+    }
   }
   
-  res.send("Error Code 403. Try Again.");//if password matches the password in our database, redirect to urls
-  res.redirect("/urls");
+  res.send("Error Code 403. Try Again.");//if password matches the password in our database, redirect to urls. If not, send error message.
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
+  req.session = null;
   res.redirect("/urls");
 });
 
 app.post("/urls/new", (req, res) => {
-  const user = users[req.cookies["user_id"]];
-  console.log(user);
+  const user = users[req.session.user_id];
+  // console.log('user:', user);
   if (!user) {
     res.send("Error, please login and try again.");
     res.redirect('/login');
   }
+
+  const uID = helpers.generateRandomString()
+  urlDatabase[uID] = { longURL: req.body.longURL, userID: user.id };
+  // console.log('urlDatabase:', urlDatabase[uID]);
+
 });
+
 
 app.post("/urls/:shortURL/delete", (req, res) => {
   const shortURL = req.params.shortURL;
-  const user = users[req.cookies["user_id"]];
+  const user_id = req.session["user_id"];
 
-  if (user.id !== urlDatabase[shortURL].userID) {
-    res.send('Please Login to Delete URLS.');
+  if (user_id !== urlDatabase[shortURL].userID) {
+    return res.send('Please Login to Delete URLS.');
   };
 
   delete urlDatabase[shortURL]
-  res.redirect("/urls");
+  return res.redirect("/urls");
 });
 
-app.post("/urls/:id/update", (req, res) => {
-  const id = req.params.id;
-  const user = users[req.cookies["user_id"]];
+app.post("/urls/:shortURL/update", (req, res) => {
+  const shortURL = req.params.shortURL;
+  urlDatabase[shortURL].longURL = req.body.newURL;
 
-  if (user.id !== urlDatabase[id].userID) {
-    res.send('Please Login to Edit URLS');
-  };
-
-  res.redirect(`/urls/${id}`);
+  return res.redirect(`/urls`);
 });
 
 app.post("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
-  const longURL = urlDatabase[shortURL].longURL;
-  const userData = {shortURL: shortURL, longURL: longURL, user_id: req.cookies["user_id"]};
-  res.redirect(`${longURL}`);
+  res.redirect(`/urls/${shortURL}`);
 });
 
 app.post("/urls", (req, res) => {
-  let randomURL = generateRandomString();
+  let randomURL = helpers.generateRandomString();
   const longURL = req.body.longURL;
   // let longURL = urlDatabase.randomURL.longURL;
-  urlDatabase[randomURL] = { longURL:longURL, userid: "" };
-  res.redirect(`/urls/${randomURL}`);         // Respond with 'Ok' (we will replace this)
+  urlDatabase[randomURL] = { longURL:longURL, userid: req.session["user_id"] };
+
+  res.redirect(`/urls`);         // Respond with 'Ok' (we will replace this)
 });
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
 
-//3. Redirect does not work for app.post(/urls/new)
+
