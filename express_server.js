@@ -68,9 +68,6 @@ app.get("/register", (req, res) => {
 
 app.get("/login/", (req, res) => {
 
-  // if (user) {
-  //   res.redirect("/urls");
-  // }
   const urlData = { users: users, urls: urlDatabase, user_id: "" };
   
   res.render("login", urlData);
@@ -78,7 +75,7 @@ app.get("/login/", (req, res) => {
 
 app.get("/urls", (req, res) => {
   
-  const urlData = { urls: "", user_id: "", users: users }; //shorthand: (userURL: userURL === userURL), we are able to just have one userURL in the object
+  const urlData = { urls: "", user_id: "", users: users };
   
   if (req.session.user_id) {
     const user = req.session.user_id;
@@ -143,10 +140,8 @@ app.post("/login", (req, res) => {
   
   const newEmailAddress = req.body.email;
   const newPassword = req.body.password;
-  // console.log("credentials:", newEmailAddress, newPassword);
 
   const userObject = helpers.uniqueEmail(newEmailAddress, users)
-  // console.log("userobject:", userObject);
 
   if (userObject) {
     if (helpers.passwordMatch(newPassword, userObject)) {
@@ -157,7 +152,7 @@ app.post("/login", (req, res) => {
     }
   }
   
-  res.send("Error Code 403. Try Again.");//if password matches the password in our database, redirect to urls. If not, send error message.
+  res.send("Error Code 403. Try Again.");
 });
 
 app.post("/logout", (req, res) => {
@@ -167,7 +162,6 @@ app.post("/logout", (req, res) => {
 
 app.post("/urls/new", (req, res) => {
   const user = users[req.session.user_id];
-  // console.log('user:', user);
   if (!user) {
     res.send("Error, please login and try again.");
     res.redirect('/login');
@@ -175,8 +169,6 @@ app.post("/urls/new", (req, res) => {
 
   const uID = helpers.generateRandomString()
   urlDatabase[uID] = { longURL: req.body.longURL, userID: user.id };
-  // console.log('urlDatabase:', urlDatabase[uID]);
-
 });
 
 
