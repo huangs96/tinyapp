@@ -6,7 +6,7 @@ const bodyParser = require('body-parser');
 const bcrypt = require('bcryptjs');
 const salt = bcrypt.genSaltSync(10);
 const cookieSession = require('cookie-session');
-const helpers = require('./helpers');
+const helpers = require('./helpers/helpers');
 
 
 app.set("view engine", "ejs");
@@ -50,6 +50,7 @@ app.get("/", (req, res) => {
   res.redirect('/urls');
 });
 
+
 app.get("/urls/new", (req, res) => {
   const usercookieID = users[req.session.user_id];
   const urlData = { userid: users[usercookieID], user_id: usercookieID};
@@ -60,11 +61,13 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new", urlData);
 });
 
+
 app.get("/register", (req, res) => {
   const urlData = { urls: urlDatabase, users: users, user_id: "" };
 
   res.render('register', urlData);
 });
+
 
 app.get("/login/", (req, res) => {
 
@@ -72,6 +75,7 @@ app.get("/login/", (req, res) => {
   
   res.render("login", urlData);
 });
+
 
 app.get("/urls", (req, res) => {
   
@@ -90,6 +94,7 @@ app.get("/urls", (req, res) => {
   }
 });
 
+
 app.get("/urls/:shortURL", (req, res) => {
   const usercookieID = users[req.session.user_id];
   const shortURL = req.params.shortURL;
@@ -100,6 +105,7 @@ app.get("/urls/:shortURL", (req, res) => {
 
   res.render("urls_show", urlData);
 });
+
 
 app.get("/u/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
