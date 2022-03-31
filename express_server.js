@@ -21,8 +21,8 @@ app.use(cookieSession({
 }));
 
 const urlDatabase = {
-  "u31v0q": { longURL: "http://twitter.com", userID: "test123"},
-  "io2p1p": { longURL: "http://apple.ca", userID: "test567"}
+  "u31v0q": { longURL: "http://twitter.com", userID: "test"},
+  "io2p1p": { longURL: "http://apple.ca", userID: "test"}
 };
 
 const users = { 
@@ -40,9 +40,9 @@ const users = {
   "test": {
     id: "test", 
     email: "test@gmail.com", 
-    password: "test"
+    password: bcrypt.hashSync('test', 10)
   }
-}
+};
 
 //GET
 
@@ -51,56 +51,63 @@ app.get("/", (req, res) => {
 });
 
 
-app.get("/urls/new", (req, res) => {
-  const usercookieID = users[req.session.user_id];
-  const urlData = { userid: users[usercookieID], user_id: usercookieID};
-
-  if (!req.session["user_id"]) {
-    return res.redirect('/login');
-  }
-  res.render("urls_new", urlData);
-});
-
-
 app.get("/register", (req, res) => {
-  const urlData = { urls: urlDatabase, users: users, user_id: "" };
-
+  const urlData = { urls: urlDatabase, users: users, user: "" };
+  
   res.render('register', urlData);
 });
 
 
-app.get("/login/", (req, res) => {
-
-  const urlData = { users: users, urls: urlDatabase, user_id: "" };
+app.get("/login", (req, res) => {
   
+  const urlData = { users: users, urls: urlDatabase, user: "" };
+
+  if (req.session.user_id) {
+    res.redirect("/urls");
+  };
+
   res.render("login", urlData);
 });
 
 
 app.get("/urls", (req, res) => {
   
-  const urlData = { urls: "", user_id: "", users: users };
+  const templateVars = { urls: "", user: "", users: users };
   
   if (req.session.user_id) {
-    const user = req.session.user_id;
-    urlData.user_id = users[user];
-
-    const urlsForUser1 = helpers.urlsForUser(users[req.session.user_id].id, urlDatabase);
-    urlData.urls = urlsForUser1;
-
-    res.render("urls_index", urlData);
+    const userID = req.session.user_id;
+    
+    const userObject = users[userID];
+    
+    const urlsForUser1 = helpers.urlsForUser(userID, urlDatabase);
+    templateVars.urls = urlsForUser1;
+    templateVars.user = userObject;
+    
+    
+    res.render("urls_index", templateVars);
   } else {
     res.redirect('/login')
   }
 });
 
 
+app.get("/urls/new", (req, res) => {
+  
+  const urlData = { user: users[req.session.user_id] };
+  
+  if (!req.session["user_id"]) {
+    return res.redirect('/login');
+  }
+
+  res.render("urls_new", urlData);
+});
+
 app.get("/urls/:shortURL", (req, res) => {
   const usercookieID = users[req.session.user_id];
   const shortURL = req.params.shortURL;
   const longURL = urlDatabase[shortURL].longURL;
   ; //req.params.shortURL grabs the key of whatever I input into the /urls/:shortURL
-  const urlData = { shortURL: req.params.shortURL, longURL: longURL, user_id: usercookieID, userid: users[usercookieID] } //shortURL equals to req.params.shortURL (the shortURL here is replaced by whatever is put into the shortURL in line)
+  const urlData = { shortURL: req.params.shortURL, longURL: longURL, user: usercookieID, userid: users[usercookieID] } //shortURL equals to req.params.shortURL (the shortURL here is replaced by whatever is put into the shortURL in line)
 
 
   res.render("urls_show", urlData);
@@ -124,7 +131,6 @@ app.post("/register", (req,res) => {
   const newEmail = req.body.email;
   const newPassword = bcrypt.hashSync(req.body.password, 10);
   const id = helpers.generateRandomString();
-  // console.log('hashed password:', newPassword);
 
   if (newEmail === "" || newPassword === "") {
     res.send("Error Code 400. Missing one or more fields. Try Again.");
@@ -138,9 +144,9 @@ app.post("/register", (req,res) => {
 
   users[id] = { id: id, email: newEmail, password: newPassword };
   req.session.user_id = id;
-  // console.log("usercheck:", users);
   res.redirect('/urls')
 });
+
 
 app.post("/login", (req, res) => {
   
@@ -152,7 +158,6 @@ app.post("/login", (req, res) => {
   if (userObject) {
     if (helpers.passwordMatch(newPassword, userObject)) {
       req.session.user_id = userObject.id;
-      console.log(userObject.id);
       res.redirect("/urls");
       return;
     }
@@ -161,13 +166,16 @@ app.post("/login", (req, res) => {
   res.send("Error Code 403. Try Again.");
 });
 
+
 app.post("/logout", (req, res) => {
   req.session = null;
   res.redirect("/urls");
 });
 
+
 app.post("/urls/new", (req, res) => {
   const user = users[req.session.user_id];
+  
   if (!user) {
     res.send("Error, please login and try again.");
     res.redirect('/login');
@@ -190,26 +198,29 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   return res.redirect("/urls");
 });
 
+//update edited longURL
 app.post("/urls/:shortURL/update", (req, res) => {
   const shortURL = req.params.shortURL;
-  urlDatabase[shortURL].longURL = req.body.newURL;
+  urlDatabase[shortURL].longURL = req.body.newUrl;
 
   return res.redirect(`/urls`);
 });
+
 
 app.post("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
   res.redirect(`/urls/${shortURL}`);
 });
 
+//generate new shortURL
 app.post("/urls", (req, res) => {
   let randomURL = helpers.generateRandomString();
   const longURL = req.body.longURL;
-  // let longURL = urlDatabase.randomURL.longURL;
-  urlDatabase[randomURL] = { longURL:longURL, userid: req.session["user_id"] };
+  urlDatabase[randomURL] = { longURL:longURL, userID: req.session["user_id"] };
 
-  res.redirect(`/urls`);         // Respond with 'Ok' (we will replace this)
+  res.redirect(`/urls`);
 });
+
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);

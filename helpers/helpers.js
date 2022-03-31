@@ -1,4 +1,4 @@
-const bodyParser = require("body-parser");
+  const bodyParser = require("body-parser");
 const bcrypt = require('bcryptjs');
 const salt = bcrypt.genSaltSync(10);
 
@@ -12,38 +12,43 @@ function generateRandomString() {
   } return randURL
 };
 
-function urlsForUser (id, urlDatabase) { 
+function urlsForUser (userid, urlDatabase) { 
   let uniqueDatabase = {};
+  console.log("urlDatabase:", urlDatabase);
+  console.log("this is userid", userid);
 
-  for (let uID in urlDatabase) {
-    
-    console.log("urlDatabase:", urlDatabase);
-    
-    if (urlDatabase[uID].userID === id) {
-      uniqueDatabase[uID] = urlDatabase[uID]; 
+  for (let urlID in urlDatabase) {
+    console.log("-----")
+    const url = urlDatabase[urlID];
+    const urlsUserId = url.userID
+    console.log("lets check this URL", url);
+    console.log("lets check this unique userID", urlsUserId);
+    console.log("userid === url.userID", userid === url.userID);
+    console.log(`${userid} === ${url.userID}`, userid === url.userID )
+    if (userid === url.userID) {
+      console.log("we found it");
+      uniqueDatabase[urlID] = url; 
     }
   }
   return uniqueDatabase;
-}
+};
 
 
 function uniqueEmail (emailAddr, users) {
-  for (let user in users) {
-    if (users[user].email === emailAddr) {
-      return users[user]
+  for (let userID in users) {
+    if (users[userID].email === emailAddr) {
+      return users[userID];
     }
   } return false;
 }
 
 function passwordMatch (pass, user) {
-  console.log("passwordmatch user:", user);
   const hash = user.password
-
-  for (id in users) {
+ 
     if(bcrypt.compareSync(pass, hash)) {
       return true;
     }
-  } return false;
+   return false;
 }; 
 
 module.exports = { 
